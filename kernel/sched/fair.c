@@ -6649,7 +6649,7 @@ static struct rq *find_busiest_queue(struct lb_env *env,
 	if (sched_enable_hmp)
 		return find_busiest_queue_hmp(env, group);
 
-	for_each_cpu(i, sched_group_cpus(group)) {
+	for_each_cpu_and(i, sched_group_cpus(group), env->cpus) {
 		unsigned long power = power_of(i);
 		unsigned long capacity = DIV_ROUND_CLOSEST(power,
 							SCHED_POWER_SCALE);
@@ -6657,9 +6657,6 @@ static struct rq *find_busiest_queue(struct lb_env *env,
 
 		if (!capacity)
 			capacity = fix_small_capacity(env->sd, group);
-
-		if (!cpumask_test_cpu(i, env->cpus))
-			continue;
 
 		rq = cpu_rq(i);
 		wl = weighted_cpuload(i);
@@ -7058,8 +7055,19 @@ void idle_balance(int this_cpu, struct rq *this_rq)
 
 	raw_spin_lock(&this_rq->lock);
 
+<<<<<<< HEAD
 	if (balance_cpu == this_cpu &&
 	    (!pulled_task || time_after(jiffies, this_rq->next_balance))) {
+=======
+	/*
+	 * While browsing the domains, we released the rq lock.
+	 * A task could have be enqueued in the meantime
+	 */
+	if (this_rq->nr_running && !pulled_task)
+		return;
+
+	if (!pulled_task || time_after(jiffies, this_rq->next_balance)) {
+>>>>>>> cd06586... sched: Fix race in idle_balance()
 		/*
 		 * We are going idle. next_balance may be set based on
 		 * a busy processor. So reset next_balance.
