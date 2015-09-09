@@ -604,16 +604,17 @@ static int __bitmap_parselist(const char *buf, unsigned int buflen,
 		int nmaskbits)
 {
 	unsigned a, b;
-	int c, old_c, totaldigits;
+	int c, old_c, totaldigits, ndigits;
 	const char __user __force *ubuf = (const char __user __force *)buf;
-	int exp_digit, in_range;
+	int at_start, in_range;
 
 	totaldigits = c = 0;
 	bitmap_zero(maskp, nmaskbits);
 	do {
-		exp_digit = 1;
+		at_start = 1;
 		in_range = 0;
 		a = b = 0;
+		ndigits = totaldigits;
 
 		/* Get the next cpu# or a range of cpu#'s */
 		while (buflen) {
@@ -627,20 +628,23 @@ static int __bitmap_parselist(const char *buf, unsigned int buflen,
 			if (isspace(c))
 				continue;
 
-			/*
-			 * If the last character was a space and the current
-			 * character isn't '\0', we've got embedded whitespace.
-			 * This is a no-no, so throw an error.
-			 */
-			if (totaldigits && c && isspace(old_c))
-				return -EINVAL;
-
 			/* A '\0' or a ',' signal the end of a cpu# or range */
 			if (c == '\0' || c == ',')
 				break;
+			/*
+			* whitespaces between digits are not allowed,
+			* but it's ok if whitespaces are on head or tail.
+			* when old_c is whilespace,
+			* if totaldigits == ndigits, whitespace is on head.
+			* if whitespace is on tail, it should not run here.
+			* as c was ',' or '\0',
+			* the last code line has broken the current loop.
+			*/
+			if ((totaldigits != ndigits) && isspace(old_c))
+				return -EINVAL;
 
 			if (c == '-') {
-				if (exp_digit || in_range)
+				if (at_start || in_range)
 					return -EINVAL;
 				b = 0;
 				in_range = 1;
@@ -654,9 +658,11 @@ static int __bitmap_parselist(const char *buf, unsigned int buflen,
 			b = b * 10 + (c - '0');
 			if (!in_range)
 				a = b;
-			exp_digit = 0;
+			at_start = 0;
 			totaldigits++;
 		}
+		if (ndigits == totaldigits)
+			continue;
 		/* if no digit is after '-', it's wrong*/
 		if (at_start && in_range)
 			return -EINVAL;
