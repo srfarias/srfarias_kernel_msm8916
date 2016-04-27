@@ -88,14 +88,6 @@ static long validate_and_copy(unsigned int *cmd, unsigned long *arg,
 	}
 
 	switch (*cmd) {
-	case MSM_THERMAL_SET_CPU_MAX_FREQUENCY:
-	case MSM_THERMAL_SET_CPU_MIN_FREQUENCY:
-		if (query->cpu_freq.cpu_num >= num_possible_cpus()) {
-			pr_err("%s: Invalid CPU number: %u\n", __func__,
-				query->cpu_freq.cpu_num);
-			ret = -EINVAL;
-			goto validate_exit;
-		}
 		break;
 	default:
 		break;
@@ -202,14 +194,6 @@ static long msm_thermal_ioctl_process(struct file *filep, unsigned int cmd,
 		goto process_exit;
 
 	switch (cmd) {
-	case MSM_THERMAL_SET_CPU_MAX_FREQUENCY:
-		ret = msm_thermal_set_frequency(query.cpu_freq.cpu_num,
-			query.cpu_freq.freq_req, true);
-		break;
-	case MSM_THERMAL_SET_CPU_MIN_FREQUENCY:
-		ret = msm_thermal_set_frequency(query.cpu_freq.cpu_num,
-			query.cpu_freq.freq_req, false);
-		break;
 	case MSM_THERMAL_SET_CLUSTER_MAX_FREQUENCY:
 		ret = msm_thermal_set_cluster_freq(query.cpu_freq.cpu_num,
 			query.cpu_freq.freq_req, true);
