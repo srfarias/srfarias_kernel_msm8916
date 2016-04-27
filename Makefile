@@ -250,6 +250,7 @@ HOSTCXX      = ccache g++
 else
 HOSTCC       = gcc
 HOSTCXX      = g++
+endif
 HOSTCFLAGS   = -Wall -Wmissing-prototypes -Wstrict-prototypes -O2 -fomit-frame-pointer
 HOSTCXXFLAGS = -O2
 
