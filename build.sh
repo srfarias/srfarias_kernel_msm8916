@@ -25,7 +25,7 @@ red='\033[0;31m'
 nocol='\033[0m'
 export ARCH=arm
 export SUBARCH=arm
-export CROSS_COMPILE=/home/srfarias/arm-eabi-4.9/bin/arm-eabi-
+export CROSS_COMPILE=/home/srfarias/arm-eabi-5.3/bin/arm-eabi-
 export KBUILD_BUILD_USER="srfarias"
 export KBUILD_BUILD_HOST="mau"
 echo -e "$cyan***********************************************"
