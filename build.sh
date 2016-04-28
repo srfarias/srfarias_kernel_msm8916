@@ -52,10 +52,10 @@ find srfarias_install/ -name '*.ko' -type f -exec cp '{}' flash_zip/system/lib/m
 mv flash_zip/system/lib/modules/wlan.ko flash_zip/system/lib/modules/pronto/pronto_wlan.ko
 cp arch/arm/boot/zImage flash_zip/tools/
 cp arch/arm/boot/dt.img flash_zip/tools/
-rm -f /home/srfarias/outmake/srfarias_kernel.zip
+rm -f /home/srfarias/surnia_srfarias_kernel_rx.zip
 cd flash_zip
 zip -r ../arch/arm/boot/srfarias_kernel.zip ./
-mv /home/srfarias/android_kernel_motorola_msm8916-1/arch/arm/boot/srfarias_kernel.zip /home/srfarias/outmake
+mv /home/srfarias/android_kernel_motorola_msm8916-1/arch/arm/boot/srfarias_kernel.zip /home/srfarias/surnia_srfarias_kernel_rx.zip
 BUILD_END=$(date +"%s")
 DIFF=$(($BUILD_END - $BUILD_START))
 echo -e "$yellow Build completed in $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) seconds.$nocol"
