@@ -1629,12 +1629,6 @@
 		};
 	};
 
-	qcom,msm-thermal-simple {
-		compatible = "qcom,msm-thermal-simple";
-		qcom,thermal-vadc = <&pm8916_vadc>;
-		qcom,adc-channel = <178>;
-	};
-
 	qcom,memshare {
 		compatible = "qcom,memshare";
 

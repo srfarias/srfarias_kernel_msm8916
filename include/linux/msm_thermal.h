@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -14,11 +14,7 @@
 #ifndef __MSM_THERMAL_H
 #define __MSM_THERMAL_H
 
-#include <linux/thermal.h>
-
-#define MAX_THRESHOLD  2
 #define TSENS_NAME_MAX 20
-#define MONITOR_ALL_TSENS -1
 #define HOTPLUG_DEVICE "hotplug"
 #define CPU0_DEVICE     "cpu0"
 #define CPU1_DEVICE     "cpu1"
@@ -73,29 +69,6 @@ struct msm_thermal_data {
 	int32_t therm_reset_temp_degC;
 };
 
-enum sensor_id_type {
-	THERM_ZONE_ID,
-	THERM_TSENS_ID,
-	THERM_ID_MAX_NR,
-};
-
-struct threshold_info;
-struct therm_threshold {
-	int32_t                     sensor_id;
-	enum sensor_id_type         id_type;
-	struct sensor_threshold     threshold[MAX_THRESHOLD];
-	int32_t                     trip_triggered;
-	void (*notify)(struct therm_threshold *);
-	struct threshold_info       *parent;
-};
-
-struct threshold_info {
-	uint32_t                     thresh_ct;
-	bool                         thresh_triggered;
-	struct list_head             list_ptr;
-	struct therm_threshold       *thresh_list;
-};
-
 enum device_req_type {
 	DEVICE_REQ_NONE = -1,
 	HOTPLUG_MITIGATION_REQ,
@@ -146,27 +119,82 @@ struct device_clnt_data {
 	void                         *usr_data;
 };
 
-static inline int sensor_mgr_init_threshold(struct device *dev,
-				struct threshold_info *thresh_inp,
-				int sensor_id, int32_t high_temp,
-				int32_t low_temp,
-				void (*callback)(struct therm_threshold *))
+#ifdef CONFIG_THERMAL_MONITOR
+extern int msm_thermal_init(struct msm_thermal_data *pdata);
+extern int msm_thermal_device_init(void);
+extern int msm_thermal_set_frequency(uint32_t cpu, uint32_t freq,
+	bool is_max);
+extern int msm_thermal_set_cluster_freq(uint32_t cluster, uint32_t freq,
+	bool is_max);
+extern int msm_thermal_get_freq_plan_size(uint32_t cluster,
+	unsigned int *table_len);
+extern int msm_thermal_get_cluster_freq_plan(uint32_t cluster,
+	unsigned int *table_ptr);
+/**
+ * devmgr_register_mitigation_client - Register for a device and
+ *                                     gets a handle for mitigation.
+ * @dev: Client device structure.
+ * @device_name: Mitgation device name which the client is interested
+ *               to mitigate.
+ * @callback: Optional callback pointer for device change notification,
+ *            otherwise pass NULL.
+ *
+ * Returns client handle structure for that device on success, or NULL
+ * with IS_ERR() condition containing error number.
+ */
+extern struct device_clnt_data *devmgr_register_mitigation_client(
+				struct device *dev,
+				const char *device_name,
+				void (*callback)(struct device_clnt_data *,
+				union device_request *, void *));
+/**
+ * devmgr_client_request_mitigation -  Set a valid mitigation for
+ *                                     registered device.
+ * @clnt: Client handle for device.
+ * @type: Type of device request populated above.
+ * @req:  Valid mitigation request.
+ *
+ * Returns zero on successful mitigation update, or negative error number.
+ */
+extern int devmgr_client_request_mitigation(struct device_clnt_data *clnt,
+						enum device_req_type type,
+						union device_request *req);
+/**
+ * devmgr_unregister_mitigation_client - Unregister mitigation device
+ * @dev: Client device structure.
+ * @clnt: Client handle for device.
+ */
+extern void devmgr_unregister_mitigation_client(
+					struct device *dev,
+					struct device_clnt_data *clnt);
+#else
+static inline int msm_thermal_init(struct msm_thermal_data *pdata)
 {
 	return -ENOSYS;
 }
-static inline int sensor_mgr_convert_id_and_set_threshold(
-			struct threshold_info *thresh_inp)
+static inline int msm_thermal_device_init(void)
 {
 	return -ENOSYS;
 }
-static inline int sensor_mgr_set_threshold(uint32_t zone_id,
-			struct sensor_threshold *threshold)
+static inline int msm_thermal_set_frequency(uint32_t cpu, uint32_t freq,
+	bool is_max)
 {
 	return -ENOSYS;
 }
-static inline void sensor_mgr_remove_threshold(struct device *dev,
-				struct threshold_info *thresh_inp)
+static inline int msm_thermal_set_cluster_freq(uint32_t cluster, uint32_t freq,
+	bool is_max);
 {
+	return -ENOSYS;
+}
+static inline int msm_thermal_get_freq_plan_size(uint32_t cluster,
+	unsigned int *table_len);
+{
+	return -ENOSYS;
+}
+static inline int msm_thermal_get_cluster_freq_plan(uint32_t cluster,
+	unsigned int *table_ptr);
+{
+	return -ENOSYS;
 }
 static inline struct device_clnt_data *devmgr_register_mitigation_client(
 				struct device *dev,
@@ -188,4 +216,6 @@ static inline void devmgr_unregister_mitigation_client(
 					struct device_clnt_data *clnt)
 {
 }
+#endif
+
 #endif /*__MSM_THERMAL_H*/
