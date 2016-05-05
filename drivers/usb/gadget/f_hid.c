@@ -17,8 +17,14 @@
 #include <linux/poll.h>
 #include <linux/uaccess.h>
 #include <linux/wait.h>
+#ifdef CONFIG_USB_HID_KBD_MOUSE_ROLE
+#include <linux/delay.h>
+#endif
 #include <linux/sched.h>
 #include <linux/usb/g_hid.h>
+#ifdef CONFIG_USB_HID_KBD_MOUSE_ROLE
+#include "f_hid.h"
+#endif
 
 static int major, minors;
 static struct class *hidg_class;
@@ -59,6 +65,45 @@ struct f_hidg {
 	struct usb_ep			*in_ep;
 	struct usb_ep			*out_ep;
 };
+
+#ifdef CONFIG_USB_HID_KBD_MOUSE_ROLE
+/* Hacky device list to fix f_hidg_write being called after device destroyed.
+   It covers only most common race conditions, there will be rare crashes anyway. */
+enum { HACKY_DEVICE_LIST_SIZE = 4 };
+static struct f_hidg *hacky_device_list[HACKY_DEVICE_LIST_SIZE];
+static void hacky_device_list_add(struct f_hidg *hidg)
+{
+	int i;
+	for (i = 0; i < HACKY_DEVICE_LIST_SIZE; i++) {
+		if (!hacky_device_list[i]) {
+			hacky_device_list[i] = hidg;
+			return;
+		}
+	}
+	pr_err("%s: too many devices, not adding device %p\n", __func__, hidg);
+}
+static void hacky_device_list_remove(struct f_hidg *hidg)
+{
+	int i;
+	for (i = 0; i < HACKY_DEVICE_LIST_SIZE; i++) {
+		if (hacky_device_list[i] == hidg) {
+			hacky_device_list[i] = NULL;
+			return;
+		}
+	}
+	pr_err("%s: cannot find device %p\n", __func__, hidg);
+}
+static int hacky_device_list_check(struct f_hidg *hidg)
+{
+	int i;
+	for (i = 0; i < HACKY_DEVICE_LIST_SIZE; i++) {
+		if (hacky_device_list[i] == hidg) {
+			return 0;
+		}
+	}
+	return 1;
+}
+#endif
 
 static inline struct f_hidg *func_to_hidg(struct usb_function *f)
 {
@@ -176,6 +221,13 @@ static ssize_t f_hidg_read(struct file *file, char __user *buffer,
 	if (!access_ok(VERIFY_WRITE, buffer, count))
 		return -EFAULT;
 
+#ifdef CONFIG_USB_HID_KBD_MOUSE_ROLE
+	if (hacky_device_list_check(hidg)) {
+		pr_err("%s: trying to read from device %p that was destroyed\n", __func__, hidg);
+		return -EIO;
+	}
+#endif
+
 	spin_lock_irqsave(&hidg->spinlock, flags);
 
 #define READ_COND (!list_empty(&hidg->completed_out_req))
@@ -246,6 +298,13 @@ static ssize_t f_hidg_write(struct file *file, const char __user *buffer,
 	if (!access_ok(VERIFY_READ, buffer, count))
 		return -EFAULT;
 
+#ifdef CONFIG_USB_HID_KBD_MOUSE_ROLE
+	if (hacky_device_list_check(hidg)) {
+		pr_err("%s: trying to write to device %p that was destroyed\n", __func__, hidg);
+		return -EIO;
+	}
+#endif
+
 	mutex_lock(&hidg->lock);
 
 #define WRITE_COND (!hidg->write_pending)
@@ -259,6 +318,13 @@ static ssize_t f_hidg_write(struct file *file, const char __user *buffer,
 		if (wait_event_interruptible_exclusive(
 				hidg->write_queue, WRITE_COND))
 			return -ERESTARTSYS;
+
+#ifdef CONFIG_USB_HID_KBD_MOUSE_ROLE
+		if (hacky_device_list_check(hidg)) {
+			pr_err("%s: trying to write to device %p that was destroyed\n", __func__, hidg);
+			return -EIO;
+		}
+#endif
 
 		mutex_lock(&hidg->lock);
 	}
@@ -300,7 +366,22 @@ static unsigned int f_hidg_poll(struct file *file, poll_table *wait)
 	struct f_hidg	*hidg  = file->private_data;
 	unsigned int	ret = 0;
 
+#ifdef CONFIG_USB_HID_KBD_MOUSE_ROLE
+	if (hacky_device_list_check(hidg)) {
+		pr_err("%s: trying to poll device %p that was destroyed\n", __func__, hidg);
+		return -EIO;
+	}
+#endif
+
 	poll_wait(file, &hidg->read_queue, wait);
+
+#ifdef CONFIG_USB_HID_KBD_MOUSE_ROLE
+	if (hacky_device_list_check(hidg)) {
+		pr_err("%s: trying to poll device %p that was destroyed\n", __func__, hidg);
+		return -EIO;
+	}
+#endif
+
 	poll_wait(file, &hidg->write_queue, wait);
 
 	if (WRITE_COND)
@@ -560,12 +641,20 @@ const struct file_operations f_hidg_fops = {
 	.llseek		= noop_llseek,
 };
 
+#ifdef CONFIG_USB_HID_KBD_MOUSE_ROLE
+static int hidg_bind(struct usb_configuration *c, struct usb_function *f)
+#else
 static int __init hidg_bind(struct usb_configuration *c, struct usb_function *f)
+#endif
 {
 	struct usb_ep		*ep;
 	struct f_hidg		*hidg = func_to_hidg(f);
 	int			status;
 	dev_t			dev;
+
+#ifdef CONFIG_USB_HID_KBD_MOUSE_ROLE
+	pr_info("%s: creating device %p\n", __func__, hidg);
+#endif
 
 	/* allocate instance-specific interface IDs, and patch descriptors */
 	status = usb_interface_id(c, f);
@@ -633,6 +722,10 @@ static int __init hidg_bind(struct usb_configuration *c, struct usb_function *f)
 
 	device_create(hidg_class, NULL, dev, NULL, "%s%d", "hidg", hidg->minor);
 
+#ifdef CONFIG_USB_HID_KBD_MOUSE_ROLE
+	hacky_device_list_add(hidg);
+#endif
+
 	return 0;
 
 fail:
@@ -651,12 +744,26 @@ static void hidg_unbind(struct usb_configuration *c, struct usb_function *f)
 {
 	struct f_hidg *hidg = func_to_hidg(f);
 
+#ifdef CONFIG_USB_HID_KBD_MOUSE_ROLE
+	pr_info("%s: destroying device %p\n", __func__, hidg);
+	/* This does not cover all race conditions, only most common one */
+	mutex_lock(&hidg->lock);
+	hacky_device_list_remove(hidg);
+	mutex_unlock(&hidg->lock);
+#endif
+
 	device_destroy(hidg_class, MKDEV(major, hidg->minor));
 	cdev_del(&hidg->cdev);
 
 	/* disable/free request and end point */
 	usb_ep_disable(hidg->in_ep);
+#ifdef CONFIG_USB_HID_KBD_MOUSE_ROLE
+	/* TODO: calling this function crash kernel,
+	   not calling this funct ion crash kernel inside f_hidg_write */
+	/* usb_ep_dequeue(hidg->in_ep, hidg->req); */
+#else
 	usb_ep_dequeue(hidg->in_ep, hidg->req);
+#endif
 	kfree(hidg->req->buf);
 	usb_ep_free_request(hidg->in_ep, hidg->req);
 
@@ -689,7 +796,11 @@ static struct usb_gadget_strings *ct_func_strings[] = {
 /*-------------------------------------------------------------------------*/
 /*                             usb_configuration                           */
 
+#ifdef CONFIG_USB_HID_KBD_MOUSE_ROLE
+int hidg_bind_config(struct usb_configuration *c,
+#else
 int __init hidg_bind_config(struct usb_configuration *c,
+#endif
 			    struct hidg_func_descriptor *fdesc, int index)
 {
 	struct f_hidg *hidg;
@@ -742,8 +853,11 @@ int __init hidg_bind_config(struct usb_configuration *c,
 
 	return status;
 }
-
+#ifdef CONFIG_USB_HID_KBD_MOUSE_ROLE
+int ghid_setup(struct usb_gadget *g, int count)
+#else
 int __init ghid_setup(struct usb_gadget *g, int count)
+#endif
 {
 	int status;
 	dev_t dev;
