@@ -40,7 +40,7 @@ echo -e " Building kernel"
 make -j8 zImage
 make -j8 dtbs
 
-/home/srfarias/android_kernel_motorola_msm8916-1/tools/dtbToolCM -2 -o /home/srfarias/android_kernel_motorola_msm8916-1/arch/arm/boot/dt.img -s 2048 -p /home/srfarias/android_kernel_motorola_msm8916-1/scripts/dtc/ /home/srfarias/android_kernel_motorola_msm8916-1/arch/arm/boot/dts/
+/home/srfarias/srfarias_kernel_msm8916/tools/dtbToolCM -2 -o /home/srfarias/srfarias_kernel_msm8916/arch/arm/boot/dt.img -s 2048 -p /home/srfarias/srfarias_kernel_msm8916/scripts/dtc/ /home/srfarias/srfarias_kernel_msm8916/arch/arm/boot/dts/
 
 make -j8 modules
 echo -e " Make flashable zip"
@@ -55,7 +55,7 @@ cp arch/arm/boot/dt.img flash_zip/tools/
 rm -f /home/srfarias/surnia_srfarias_kernel_rx.zip
 cd flash_zip
 zip -r ../arch/arm/boot/srfarias_kernel.zip ./
-mv /home/srfarias/android_kernel_motorola_msm8916-1/arch/arm/boot/srfarias_kernel.zip /home/srfarias/surnia_srfarias_kernel_rx.zip
+mv /home/srfarias/srfarias_kernel_msm8916/arch/arm/boot/srfarias_kernel.zip /home/srfarias/surnia_srfarias_kernel_rx.zip
 BUILD_END=$(date +"%s")
 DIFF=$(($BUILD_END - $BUILD_START))
 echo -e "$yellow Build completed in $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) seconds.$nocol"
