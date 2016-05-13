@@ -156,6 +156,15 @@ static void thermal_check(void)
 	info.therm_allowed_cpus = sum;
 }
 
+static void reschedule_nodelay(void)
+{
+	batt_level_check();
+	thermal_check();
+
+	cancel_delayed_work_sync(&helper_work);
+	queue_delayed_work(helper_wq, &helper_work, 0);
+}
+
 void reschedule_helper(void)
 {
 	batt_level_check();
@@ -209,7 +218,8 @@ void thermal_level_relay(long temp)
 static int state_notifier_callback(struct notifier_block *this,
 				unsigned long event, void *data)
 {
-	reschedule_helper();
+	if (helper.enabled)
+		reschedule_nodelay();
 
 	return NOTIFY_OK;
 }
