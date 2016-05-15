@@ -710,7 +710,7 @@ kgsl_mmu_get_gpuaddr(struct kgsl_pagetable *pagetable,
 	/* Add space for the guard page when allocating the mmu VA. */
 	size = memdesc->size;
 	if (kgsl_memdesc_has_guard_page(memdesc))
-		size += PAGE_SIZE;
+		size += kgsl_memdesc_guard_page_size(memdesc);
 
 	/*
 	 * Allocate aligned virtual addresses for iommu. This allows
@@ -787,7 +787,7 @@ kgsl_mmu_map(struct kgsl_pagetable *pagetable,
 	/* Add space for the guard page when allocating the mmu VA. */
 	size = memdesc->size;
 	if (kgsl_memdesc_has_guard_page(memdesc))
-		size += PAGE_SIZE;
+		size += kgsl_memdesc_guard_page_size(memdesc);
 
 	if (KGSL_MMU_TYPE_IOMMU != kgsl_mmu_get_mmutype())
 		spin_lock(&pagetable->lock);
@@ -836,7 +836,7 @@ kgsl_mmu_put_gpuaddr(struct kgsl_pagetable *pagetable,
 	/* Add space for the guard page when freeing the mmu VA. */
 	size = memdesc->size;
 	if (kgsl_memdesc_has_guard_page(memdesc))
-		size += PAGE_SIZE;
+		size += kgsl_memdesc_guard_page_size(memdesc);
 
 	if (KGSL_MEMDESC_BITMAP_ALLOC & memdesc->priv) {
 		bitmap_clear(pagetable->mem_bitmap,
@@ -884,7 +884,7 @@ kgsl_mmu_unmap(struct kgsl_pagetable *pagetable,
 	/* Add space for the guard page when freeing the mmu VA. */
 	size = memdesc->size;
 	if (kgsl_memdesc_has_guard_page(memdesc))
-		size += PAGE_SIZE;
+		size += kgsl_memdesc_guard_page_size(memdesc);
 
 	start_addr = memdesc->gpuaddr;
 	end_addr = (memdesc->gpuaddr + size);

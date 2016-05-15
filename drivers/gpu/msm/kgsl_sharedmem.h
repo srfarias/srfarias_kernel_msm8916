@@ -155,6 +155,36 @@ memdesc_sg_phys(struct kgsl_memdesc *memdesc,
 	return 0;
 }
 
+/**
+ * memdesg_sg_dma() - Turn a dma_addr (from CMA) into a sg table
+ * @memdesc: Pointer to the memdesc structure
+ * @addr: Physical address from the dma_alloc function
+ * @size: Size of the chunk
+ *
+ * Create a sg table for the contigious chunk specified by addr and size.
+ */
+static inline int
+memdesc_sg_dma(struct kgsl_memdesc *memdesc,
+		phys_addr_t addr, size_t size)
+{
+	struct page *page = phys_to_page(addr);
+
+	memdesc->sg = kgsl_malloc(sizeof(struct scatterlist));
+	if (memdesc->sg == NULL)
+		return -ENOMEM;
+
+	sg_set_page(memdesc->sg, page, size, 0);
+
+	/*
+	 * Continuing a grand tradition of doing it wrong this should be the
+	 * dma_addr_t and not the phys_addr_t. But everything downstream of us
+	 * assume this is a phys_addr_t so we do this.
+	 */
+
+	sg_dma_address(memdesc->sg) = addr;
+	return 0;
+}
+
 /*
  * kgsl_memdesc_is_global - is this a globally mapped buffer?
  * @memdesc: the memdesc
@@ -187,6 +217,18 @@ static inline int
 kgsl_memdesc_has_guard_page(const struct kgsl_memdesc *memdesc)
 {
 	return (memdesc->priv & KGSL_MEMDESC_GUARD_PAGE) != 0;
+}
+
+/*
+ * kgsl_memdesc_guard_page_size - returns guard page size
+ * @memdesc - the memdesc
+ *
+ * Returns guard page size
+ */
+static inline int
+kgsl_memdesc_guard_page_size(const struct kgsl_memdesc *memdesc)
+{
+	return kgsl_memdesc_is_secured(memdesc) ? SZ_1M : PAGE_SIZE;
 }
 
 /*
@@ -307,5 +349,9 @@ static inline void kgsl_free_global(struct kgsl_memdesc *memdesc)
 	kgsl_remove_global_pt_entry(memdesc);
 	kgsl_sharedmem_free(memdesc);
 }
+
+int kgsl_heap_init(void);
+struct page *kgsl_heap_alloc(unsigned long size);
+void kgsl_heap_free(struct page *page);
 
 #endif /* __KGSL_SHAREDMEM_H */

@@ -384,14 +384,22 @@ void a4xx_snapshot(struct adreno_device *adreno_dev,
 	struct kgsl_snapshot_registers_list list;
 	struct kgsl_snapshot_registers regs[5];
 	struct adreno_snapshot_data *snap_data = gpudev->snapshot_data;
-	unsigned int clock_ctl, clock_ctl2;
 
 	list.registers = regs;
 	list.count = 0;
 
-	/* Disable Clock gating temporarily for the debug bus to work */
-	kgsl_regread(device, A4XX_RBBM_CLOCK_CTL, &clock_ctl);
-	kgsl_regread(device, A4XX_RBBM_CLOCK_CTL2, &clock_ctl2);
+	/* Disable SP clock gating for the debug bus to work on A430v2/A418 */
+	if (adreno_is_a430v2(adreno_dev) || adreno_is_a418(adreno_dev)) {
+		kgsl_regwrite(device, A4XX_RBBM_CLOCK_CTL_SP0, 0);
+		kgsl_regwrite(device, A4XX_RBBM_CLOCK_CTL_SP1, 0);
+		kgsl_regwrite(device, A4XX_RBBM_CLOCK_CTL_SP2, 0);
+		kgsl_regwrite(device, A4XX_RBBM_CLOCK_CTL_SP3, 0);
+		kgsl_regwrite(device, A4XX_RBBM_CLOCK_CTL2_SP0, 0);
+		kgsl_regwrite(device, A4XX_RBBM_CLOCK_CTL2_SP1, 0);
+		kgsl_regwrite(device, A4XX_RBBM_CLOCK_CTL2_SP2, 0);
+		kgsl_regwrite(device, A4XX_RBBM_CLOCK_CTL2_SP3, 0);
+	}
+	/* Disable top level clock gating the debug bus to work */
 	kgsl_regwrite(device, A4XX_RBBM_CLOCK_CTL, 0);
 	kgsl_regwrite(device, A4XX_RBBM_CLOCK_CTL2, 0);
 
@@ -400,12 +408,19 @@ void a4xx_snapshot(struct adreno_device *adreno_dev,
 			a4xx_registers_count, 1);
 
 	_snapshot_a3xx_regs(regs, &list, a4xx_sp_tp_registers,
-			a4xx_sp_tp_registers_count, 0);
+			a4xx_sp_tp_registers_count,
+			(adreno_is_a430(adreno_dev) ? 1 : 0));
 
 	if (adreno_is_a420(adreno_dev)) {
 		_snapshot_a3xx_regs(regs, &list, a4xx_xpu_registers,
 				a4xx_xpu_reg_cnt, 1);
 	}
+
+	if (adreno_is_a430v2(adreno_dev)) {
+		_snapshot_a3xx_regs(regs, &list, a4xx_ppd_registers,
+				a4xx_ppd_registers_count, 1);
+	}
+
 	a4xx_snapshot_vbif_registers(device, regs, &list);
 
 	/* Turn on MMU clocks since we read MMU registers */
@@ -454,9 +469,11 @@ void a4xx_snapshot(struct adreno_device *adreno_dev,
 	/* Debug bus */
 	a4xx_snapshot_debugbus(device, snapshot);
 
-	a4xx_reset_hlsq(device);
+	if (!adreno_is_a430(adreno_dev)) {
+		a4xx_reset_hlsq(device);
 
-	kgsl_snapshot_dump_skipped_regs(device, &list);
+		kgsl_snapshot_dump_skipped_regs(device, &list);
+	}
 	/* Shader working/shadow memory */
 	kgsl_snapshot_add_section(device, KGSL_SNAPSHOT_SECTION_DEBUG,
 		snapshot, a4xx_snapshot_shader_memory,

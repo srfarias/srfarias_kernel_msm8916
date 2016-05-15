@@ -41,6 +41,10 @@
 	{ KGSL_CONSTRAINT_PWR_MIN, "Min" }, \
 	{ KGSL_CONSTRAINT_PWR_MAX, "Max" }
 
+#define KGSL_PWR_ADD_LIMIT 0
+#define KGSL_PWR_DEL_LIMIT 1
+#define KGSL_PWR_SET_LIMIT 2
+
 /*
  * States for thermal cycling.  _DISABLE means that no cycling has been
  * requested.  _ENABLE means that cycling has been requested, but GPU
@@ -80,6 +84,7 @@ struct kgsl_pwr_constraint {
  * @power_flags - Control flags for power
  * @pwrlevels - List of supported power levels
  * @active_pwrlevel - The currently active power level
+ * @previous_pwrlevel - The power level before transition
  * @thermal_pwrlevel - maximum powerlevel constraint from thermal
  * @default_pwrlevel - device wake up power level
  * @init_pwrlevel - device inital power level
@@ -91,6 +96,7 @@ struct kgsl_pwr_constraint {
  * @gpu_reg - pointer to the regulator structure for gpu_reg
  * @gpu_cx - pointer to the regulator structure for gpu_cx
  * @pcl - bus scale identifier
+ * @ocmem - ocmem bus scale identifier
  * @irq_name - resource name for the IRQ
  * @clk_stats - structure of clock statistics
  * @pm_qos_req_dma - the power management quality of service structure
@@ -104,6 +110,14 @@ struct kgsl_pwr_constraint {
  * @constraint - currently active power constraint
  * @superfast - Boolean flag to indicate that the GPU start should be run in the
  * higher priority thread
+ * @thermal_cycle_ws - Work struct for scheduling thermal cycling
+ * @thermal_timer - Timer for thermal cycling
+ * @thermal_timeout - Cycling timeout for switching between frequencies
+ * @thermal_cycle - Is thermal cycling enabled
+ * @thermal_highlow - flag for swithcing between high and low frequency
+ * @limits - list head for limits
+ * @limits_lock - spin lock to protect limits list
+ * @sysfs_pwr_limit - pointer to the sysfs limits node
  */
 
 struct kgsl_pwrctrl {
@@ -113,6 +127,7 @@ struct kgsl_pwrctrl {
 	unsigned long ctrl_flags;
 	struct kgsl_pwrlevel pwrlevels[KGSL_MAX_PWRLEVELS];
 	unsigned int active_pwrlevel;
+	unsigned int previous_pwrlevel;
 	unsigned int thermal_pwrlevel;
 	unsigned int default_pwrlevel;
 	unsigned int init_pwrlevel;
@@ -125,6 +140,7 @@ struct kgsl_pwrctrl {
 	struct regulator *gpu_reg;
 	struct regulator *gpu_cx;
 	uint32_t pcl;
+	uint32_t ocmem_pcl;
 	const char *irq_name;
 	struct kgsl_clk_stats clk_stats;
 	struct pm_qos_request pm_qos_req_dma;
@@ -143,6 +159,9 @@ struct kgsl_pwrctrl {
 	uint32_t thermal_timeout;
 	uint32_t thermal_cycle;
 	uint32_t thermal_highlow;
+	struct list_head limits;
+	spinlock_t limits_lock;
+	struct kgsl_pwr_limit *sysfs_pwr_limit;
 };
 
 int kgsl_pwrctrl_init(struct kgsl_device *device);

@@ -37,7 +37,7 @@ const unsigned int a4xx_registers[] = {
 	0x0028, 0x002B, 0x002E, 0x0034, 0x0037, 0x0044, 0x0047, 0x0066,
 	0x0068, 0x0095, 0x009C, 0x0170, 0x0174, 0x01AF,
 	/* CP */
-	0x0200, 0x0226, 0x0228, 0x0233, 0x0240, 0x0250, 0x04C0, 0x04D0,
+	0x0200, 0x0226, 0x0228, 0x0233, 0x0240, 0x0258, 0x04C0, 0x04D0,
 	0x04D2, 0x04DD, 0x0500, 0x050B, 0x0578, 0x058F,
 	/* VSC */
 	0x0C00, 0x0C03, 0x0C08, 0x0C41, 0x0C50, 0x0C51,
@@ -88,6 +88,16 @@ const unsigned int a4xx_sp_tp_registers[] = {
 
 const unsigned int a4xx_sp_tp_registers_count =
 			ARRAY_SIZE(a4xx_sp_tp_registers) / 2;
+
+const unsigned int a4xx_ppd_registers[] = {
+	/* V2 Thresholds */
+	0x01B2, 0x01B5,
+	/* Control and Status */
+	0x01B9, 0x01BE,
+};
+
+const unsigned int a4xx_ppd_registers_count =
+			ARRAY_SIZE(a4xx_ppd_registers) / 2;
 
 const unsigned int a4xx_xpu_registers[] = {
 	/* XPU */
@@ -370,7 +380,7 @@ static void a4xx_regulator_enable(struct adreno_device *adreno_dev)
 {
 	unsigned int reg;
 	struct kgsl_device *device = &adreno_dev->dev;
-	if (!adreno_is_a430(adreno_dev))
+	if (!(adreno_is_a430(adreno_dev) || adreno_is_a418(adreno_dev)))
 		return;
 
 	/* Set the default register values; set SW_COLLAPSE to 0 */
@@ -392,7 +402,7 @@ static void a4xx_regulator_enable(struct adreno_device *adreno_dev)
 static void a4xx_regulator_disable(struct adreno_device *adreno_dev)
 {
 	struct kgsl_device *device = &adreno_dev->dev;
-	if (!adreno_is_a430(adreno_dev))
+	if (!(adreno_is_a430(adreno_dev) || adreno_is_a418(adreno_dev)))
 		return;
 
 	/* Set the default register values; set SW_COLLAPSE to 1 */
@@ -418,26 +428,59 @@ static void a4xx_enable_pc(struct adreno_device *adreno_dev)
  * a4xx_enable_ppd() - Enable the Peak power detect logic in the h/w
  * @adreno_dev: The adreno device pointer
  *
- * A430 can detect peak current conditions inside h/w and throttle the
- * gpu clock to mitigate it.
+ * A430 can detect peak current conditions inside h/w and throttle
+ * the workload to ALUs to mitigate it.
  */
 static void a4xx_enable_ppd(struct adreno_device *adreno_dev)
 {
 	struct kgsl_device *device = &adreno_dev->dev;
 
 	if (!ADRENO_FEATURE(adreno_dev, ADRENO_PPD) ||
-		!test_bit(ADRENO_PPD_CTRL, &adreno_dev->pwrctrl_flag))
+		!test_bit(ADRENO_PPD_CTRL, &adreno_dev->pwrctrl_flag) ||
+		!adreno_is_a430v2(adreno_dev))
 		return;
 
 	/* Program thresholds */
-	kgsl_regwrite(device, A4XX_RBBM_PPD_EPOCH_INTRA_TH_1, 0x000A800C);
-	kgsl_regwrite(device, A4XX_RBBM_PPD_EPOCH_INTRA_TH_2, 0x00140002);
-	kgsl_regwrite(device, A4XX_RBBM_PPD_EPOCH_INTER_TH_HI_CLR_TH,
-								0x00000000);
-	kgsl_regwrite(device, A4XX_RBBM_PPD_EPOCH_INTER_TH_LO, 0x00010101);
+	kgsl_regwrite(device, A4XX_RBBM_PPD_EPOCH_INTER_TH_HIGH_CLEAR_THR,
+								0x003F0101);
+	kgsl_regwrite(device, A4XX_RBBM_PPD_EPOCH_INTER_TH_LOW, 0x00000101);
+	kgsl_regwrite(device, A4XX_RBBM_PPD_V2_SP_PWR_WEIGHTS, 0x00085014);
+	kgsl_regwrite(device, A4XX_RBBM_PPD_V2_SP_RB_EPOCH_TH, 0x00000B46);
+	kgsl_regwrite(device, A4XX_RBBM_PPD_V2_TP_CONFIG, 0xE4525111);
+	kgsl_regwrite(device, A4XX_RBBM_PPD_RAMP_V2_CONTROL, 0x0000000B);
+
 	/* Enable PPD*/
-	kgsl_regwrite(device, A4XX_RBBM_PPD_CTRL, 0x1908E401);
+	kgsl_regwrite(device, A4XX_RBBM_PPD_CTRL, 0x1002E40C);
 };
+
+/*
+ * a4xx_pwrlevel_change_settings() - Program the hardware during power level
+ * transitions
+ * @adreno_dev: The adreno device pointer
+ * @mask_throttle: flag to check if PPD throttle should be masked
+ */
+static void a4xx_pwrlevel_change_settings(struct adreno_device *adreno_dev,
+						bool mask_throttle)
+{
+	struct kgsl_device *device = &adreno_dev->dev;
+
+	/* PPD programming only for A430v2 */
+	if (!ADRENO_FEATURE(adreno_dev, ADRENO_PPD) ||
+		!test_bit(ADRENO_PPD_CTRL, &adreno_dev->pwrctrl_flag) ||
+		!adreno_is_a430v2(adreno_dev))
+		return;
+
+	if (mask_throttle) {
+		/* Going to Non-Turbo mode - mask the throttle and reset */
+		kgsl_regwrite(device, A4XX_RBBM_PPD_CTRL, 0x1002E40E);
+		kgsl_regwrite(device, A4XX_RBBM_PPD_CTRL, 0x1002E40C);
+	} else {
+		/* Going to Turbo mode - unmask the throttle and reset */
+		kgsl_regwrite(device, A4XX_RBBM_PPD_CTRL, 0x1002E40A);
+		kgsl_regwrite(device, A4XX_RBBM_PPD_CTRL, 0x1002E408);
+	}
+}
+
 /*
  * a4xx_enable_hwcg() - Program the clock control registers
  * @device: The adreno device pointer
@@ -553,8 +596,10 @@ static void a4xx_enable_hwcg(struct kgsl_device *device)
 	 * Disabling HW clock gating + NAP enabled combination has
 	 * minimal power impact. So this option is chosen over disabling
 	 * SP/TP power collapse.
+	 * Revisions of A430 which chipid 2 and above do not have the issue.
 	 */
-	if (adreno_is_a430(adreno_dev))
+	if (adreno_is_a430(adreno_dev) &&
+		(ADRENO_CHIPID_PATCH(adreno_dev->chipid) < 2))
 		kgsl_regwrite(device, A4XX_RBBM_CLOCK_CTL, 0);
 	else
 		kgsl_regwrite(device, A4XX_RBBM_CLOCK_CTL, 0xAAAAAAAA);
@@ -604,6 +649,17 @@ static void a4xx_protect_init(struct adreno_device *adreno_dev)
 	/* VPC registers */
 	adreno_set_protected_registers(adreno_dev, &index, 0xE60, 1);
 
+	if (adreno_is_a430(adreno_dev) || adreno_is_a420(adreno_dev) ||
+		adreno_is_a418(adreno_dev)) {
+		/*
+		 * Protect registers that might cause XPU violation if
+		 * accessed by GPU
+		 */
+		adreno_set_protected_registers(adreno_dev, &index, 0x2c00, 10);
+		adreno_set_protected_registers(adreno_dev, &index, 0x3300, 8);
+		adreno_set_protected_registers(adreno_dev, &index, 0x3400, 10);
+	}
+
 	/* SMMU registers */
 	iommu_regs = kgsl_mmu_get_prot_regs(&device->mmu);
 	if (iommu_regs)
@@ -625,6 +681,7 @@ static void a4xx_start(struct adreno_device *adreno_dev)
 {
 	struct kgsl_device *device = &adreno_dev->dev;
 	struct adreno_gpudev *gpudev = ADRENO_GPU_DEVICE(adreno_dev);
+	unsigned int cp_debug = A4XX_CP_DEBUG_DEFAULT;
 
 	adreno_vbif_start(adreno_dev, a4xx_vbif_platforms,
 			ARRAY_SIZE(a4xx_vbif_platforms));
@@ -676,8 +733,16 @@ static void a4xx_start(struct adreno_device *adreno_dev)
 	kgsl_regwrite(device, UCHE_TRAP_BASE_HI, 0xffff0000);
 
 	/* On A420 cores turn on SKIP_IB2_DISABLE in addition to the default */
-	kgsl_regwrite(device, A4XX_CP_DEBUG, A4XX_CP_DEBUG_DEFAULT |
-			(adreno_is_a420(adreno_dev) ? (1 << 29) : 0));
+	if (adreno_is_a420(adreno_dev))
+		cp_debug |= (1 << 29);
+	/*
+	 * Set chicken bit to disable the speed up of bootstrap on A430
+	 * and its derivatives
+	 */
+	else
+		cp_debug |= (1 << 14);
+
+	kgsl_regwrite(device, A4XX_CP_DEBUG, cp_debug);
 
 	/* On A430 enable SP regfile sleep for power savings */
 	if (!adreno_is_a420(adreno_dev)) {
@@ -700,8 +765,8 @@ static void a4xx_start(struct adreno_device *adreno_dev)
 		kgsl_regwrite(device, A4XX_RBBM_CLOCK_DELAY_HLSQ, val);
 	}
 
-	/* A430 offers a bigger chunk of CP_STATE_DEBUG registers */
-	if (adreno_is_a430(adreno_dev))
+	/* A430 and derivatives offers bigger chunk of CP_STATE_DEBUG regs */
+	if (!adreno_is_a420(adreno_dev))
 		a4xx_snap_sizes.cp_state_deb = 0x34;
 
 	a4xx_protect_init(adreno_dev);
@@ -898,10 +963,19 @@ void a4xx_err_callback(struct adreno_device *adreno_dev, int bit)
 			"ringbuffer reserved bit error interrupt\n");
 		break;
 	case A4XX_INT_CP_HW_FAULT:
+	{
+		struct adreno_gpudev *gpudev = ADRENO_GPU_DEVICE(adreno_dev);
 		kgsl_regread(device, A4XX_CP_HW_FAULT, &reg);
 		KGSL_DRV_CRIT_RATELIMIT(device,
 			"CP | Ringbuffer HW fault | status=%x\n", reg);
+		/*
+		 * mask off this interrupt since it can spam, it will be
+		 * turned on again when device resets
+		 */
+		adreno_writereg(adreno_dev, ADRENO_REG_RBBM_INT_0_MASK,
+			gpudev->irq->mask & ~(1 << A4XX_INT_CP_HW_FAULT));
 		break;
+	}
 	case A4XX_INT_CP_REG_PROTECT_FAULT:
 		kgsl_regread(device, A4XX_CP_PROTECT_STATUS, &reg);
 		KGSL_DRV_CRIT(device,
@@ -965,6 +1039,7 @@ static unsigned int a4xx_register_offsets[ADRENO_REG_REGISTER_MAX] = {
 	ADRENO_REG_DEFINE(ADRENO_REG_CP_PROTECT_STATUS, A4XX_CP_PROTECT_STATUS),
 	ADRENO_REG_DEFINE(ADRENO_REG_CP_SCRATCH_REG6, A4XX_CP_SCRATCH_REG6),
 	ADRENO_REG_DEFINE(ADRENO_REG_CP_SCRATCH_REG7, A4XX_CP_SCRATCH_REG7),
+	ADRENO_REG_DEFINE(ADRENO_REG_CP_PROTECT_REG_0, A4XX_CP_PROTECT_REG_0),
 	ADRENO_REG_DEFINE(ADRENO_REG_RBBM_STATUS, A4XX_RBBM_STATUS),
 	ADRENO_REG_DEFINE(ADRENO_REG_RBBM_PERFCTR_CTL, A4XX_RBBM_PERFCTR_CTL),
 	ADRENO_REG_DEFINE(ADRENO_REG_RBBM_PERFCTR_LOAD_CMD0,
@@ -1824,6 +1899,7 @@ struct adreno_gpudev adreno_a4xx_gpudev = {
 	.is_sptp_idle = a4xx_is_sptp_idle,
 	.enable_pc = a4xx_enable_pc,
 	.enable_ppd = a4xx_enable_ppd,
+	.pwrlevel_change_settings = a4xx_pwrlevel_change_settings,
 	.regulator_enable = a4xx_regulator_enable,
 	.regulator_disable = a4xx_regulator_disable,
 };

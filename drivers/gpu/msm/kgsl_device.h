@@ -181,6 +181,8 @@ struct kgsl_functable {
 	void (*regulator_enable)(struct kgsl_device *);
 	bool (*is_hw_collapsible)(struct kgsl_device *);
 	void (*regulator_disable)(struct kgsl_device *);
+	void (*pwrlevel_change_settings)(struct kgsl_device *device,
+		bool mask_throttle);
 };
 
 typedef long (*kgsl_ioctl_func_t)(struct kgsl_device_private *,
@@ -239,10 +241,10 @@ struct kgsl_memobj_node {
  * @profile_index: Index to store the start/stop ticks in the kernel profiling
  * buffer
  * @submit_ticks: Variable to hold ticks at the time of cmdbatch submit.
- * @timeout_jiffies: For a syncpoint cmdbatch the jiffies at which the
- * timer will expire
  * This structure defines an atomic batch of command buffers issued from
  * userspace.
+ * @timeout_jiffies: For a syncpoint cmdbatch the jiffies at which the
+ * timer will expire
  */
 struct kgsl_cmdbatch {
 	struct kgsl_device *device;
@@ -264,6 +266,7 @@ struct kgsl_cmdbatch {
 	unsigned long profiling_buffer_gpuaddr;
 	unsigned int profile_index;
 	uint64_t submit_ticks;
+	unsigned int global_ts;
 	unsigned long timeout_jiffies;
 };
 
@@ -984,5 +987,18 @@ void kgsl_snapshot_add_section(struct kgsl_device *device, u16 id,
 	struct kgsl_snapshot *snapshot,
 	size_t (*func)(struct kgsl_device *, u8 *, size_t, void *),
 	void *priv);
+
+/**
+ * struct kgsl_pwr_limit - limit structure for each client
+ * @node: Local list node for the limits list
+ * @level: requested power level
+ * @device: pointer to the device structure
+ */
+struct kgsl_pwr_limit {
+	struct list_head node;
+	unsigned int level;
+	struct kgsl_device *device;
+};
+
 
 #endif  /* __KGSL_DEVICE_H */

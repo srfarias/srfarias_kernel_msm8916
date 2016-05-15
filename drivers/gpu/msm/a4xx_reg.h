@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -434,12 +434,16 @@ enum a4xx_rb_perfctr_rb_sel {
 #define A4XX_RBBM_CFG_DEBBUS_MISR0		0x1ae
 #define A4XX_RBBM_CFG_DEBBUS_MISR1		0x1af
 #define A4XX_RBBM_POWER_STATUS			0x1b0
+#define A4XX_RBBM_PPD_V2_SP_PWR_WEIGHTS		0x1b2
+#define A4XX_RBBM_PPD_V2_SP_RB_EPOCH_TH		0x1b3
+#define A4XX_RBBM_PPD_V2_TP_CONFIG		0x1b4
+#define A4XX_RBBM_PPD_RAMP_V2_CONTROL		0x1b5
 #define A4XX_RBBM_WAIT_IDLE_CLOCKS_CTL2		0x1b8
 #define A4XX_RBBM_PPD_CTRL			0x1b9
 #define A4XX_RBBM_PPD_EPOCH_INTRA_TH_1		0x1ba
 #define A4XX_RBBM_PPD_EPOCH_INTRA_TH_2		0x1bb
-#define A4XX_RBBM_PPD_EPOCH_INTER_TH_HI_CLR_TH  0x1bc
-#define A4XX_RBBM_PPD_EPOCH_INTER_TH_LO         0x1bd
+#define A4XX_RBBM_PPD_EPOCH_INTER_TH_HIGH_CLEAR_THR  0x1bc
+#define A4XX_RBBM_PPD_EPOCH_INTER_TH_LOW	0x1bd
 /* SECVID registers */
 #define A4XX_RBBM_SECVID_TRUST_CONFIG		0xf000
 #define A4XX_RBBM_SECVID_TRUST_CONTROL		0xf400
@@ -479,22 +483,8 @@ enum a4xx_rb_perfctr_rb_sel {
 #define A4XX_CP_DEBUG_DEFAULT (1 << 25)
 
 #define A4XX_CP_PROTECT_REG_0		0x240
-#define A4XX_CP_PROTECT_REG_1		0x241
-#define A4XX_CP_PROTECT_REG_3		0x242
-#define A4XX_CP_PROTECT_REG_4		0x243
-#define A4XX_CP_PROTECT_REG_5		0x244
-#define A4XX_CP_PROTECT_REG_6		0x245
-#define A4XX_CP_PROTECT_REG_7		0x246
-#define A4XX_CP_PROTECT_REG_8		0x248
-#define A4XX_CP_PROTECT_REG_9		0x249
-#define A4XX_CP_PROTECT_REG_A		0x24a
-#define A4XX_CP_PROTECT_REG_B		0x24b
-#define A4XX_CP_PROTECT_REG_C		0x24c
-#define A4XX_CP_PROTECT_REG_D		0x24d
-#define A4XX_CP_PROTECT_REG_E		0x24e
-#define A4XX_CP_PROTECT_REG_F		0x24f
-
 #define A4XX_CP_PROTECT_CTRL		0x250
+#define A4XX_CP_PROTECT_REG_10		0x251
 #define A4XX_CP_SCRATCH_UMASK		0x228
 #define A4XX_CP_SCRATCH_ADDR		0x229
 #define A4XX_CP_CNTL			0x22c

@@ -717,8 +717,7 @@ void a3xx_gpudev_init(struct adreno_device *adreno_dev)
 	struct adreno_gpudev *gpudev;
 	const struct adreno_reg_offsets *reg_offsets;
 
-	if (adreno_is_a306(adreno_dev) ||
-			adreno_is_a304(adreno_dev)) {
+	if (adreno_is_a306(adreno_dev)) {
 		gpudev = ADRENO_GPU_DEVICE(adreno_dev);
 		reg_offsets = gpudev->reg_offsets;
 		reg_offsets->offsets[ADRENO_REG_VBIF_XIN_HALT_CTRL0] =
@@ -2028,6 +2027,7 @@ static unsigned int a3xx_register_offsets[ADRENO_REG_REGISTER_MAX] = {
 	ADRENO_REG_DEFINE(ADRENO_REG_CP_MERCIU_DATA2, A3XX_CP_MERCIU_DATA2),
 	ADRENO_REG_DEFINE(ADRENO_REG_CP_MEQ_ADDR, A3XX_CP_MEQ_ADDR),
 	ADRENO_REG_DEFINE(ADRENO_REG_CP_MEQ_DATA, A3XX_CP_MEQ_DATA),
+	ADRENO_REG_DEFINE(ADRENO_REG_CP_PROTECT_REG_0, A3XX_CP_PROTECT_REG_0),
 	ADRENO_REG_DEFINE(ADRENO_REG_RBBM_STATUS, A3XX_RBBM_STATUS),
 	ADRENO_REG_DEFINE(ADRENO_REG_RBBM_PERFCTR_CTL, A3XX_RBBM_PERFCTR_CTL),
 	ADRENO_REG_DEFINE(ADRENO_REG_RBBM_PERFCTR_LOAD_CMD0,
