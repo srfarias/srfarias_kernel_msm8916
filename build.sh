@@ -34,6 +34,7 @@ echo -e "**********************************************$nocol"
 rm -f arch/arm/boot/dts/*.dtb
 rm -f arch/arm/boot/dt.img
 rm -f flash_zip/boot.img
+make clean && make mrproper
 echo -e " Initializing defconfig"
 make surnia_defconfig
 echo -e " Building kernel"
