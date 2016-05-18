@@ -583,6 +583,12 @@ config MSM_PERFORMANCE_HOTPLUG_ON
           compile out the nodes needed for core-control functionality through
           msm_performance.
 
+config STATE_NOTIFIER
+        bool "State Notifier"
+
+config STATE_HELPER
+        bool "State Helper"
+	depends on STATE_NOTIFIER
 
 source "drivers/soc/qcom/memshare/Kconfig"
 

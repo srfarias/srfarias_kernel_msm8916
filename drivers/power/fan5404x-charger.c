@@ -29,6 +29,10 @@
 #include <linux/regulator/machine.h>
 #include <linux/reboot.h>
 #include <linux/qpnp/qpnp-adc.h>
+#ifdef CONFIG_STATE_HELPER
+#include <linux/state_helper.h>
+#endif
+
 
 #ifndef GENMASK
 /* Mask/Bit helpers */
@@ -1421,6 +1425,9 @@ static int fan5404x_batt_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
 		val->intval = fan5404x_get_prop_batt_capacity(chip);
+        #ifdef CONFIG_STATE_HELPER
+		batt_level_notify(val->intval);
+        #endif
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
 		val->intval = fan5404x_get_prop_batt_health(chip);
