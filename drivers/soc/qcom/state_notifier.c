@@ -39,6 +39,8 @@ bool state_suspended;
 module_param_named(state_suspended, state_suspended, bool, 0444);
 static bool suspend_in_progress;
 
+EXPORT_SYMBOL(state_suspended);
+
 static BLOCKING_NOTIFIER_HEAD(state_notifier_list);
 
 /**
@@ -126,4 +128,4 @@ subsys_initcall(state_notifier_init);
 
 MODULE_AUTHOR("Pranav Vashi <neobuddy89@gmail.com>");
 MODULE_DESCRIPTION("State Notifier Driver");
-MODULE_LICENSE("GPLv2");
+MODULE_LICENSE("GPL");

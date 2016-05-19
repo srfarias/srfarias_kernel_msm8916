@@ -643,4 +643,4 @@ module_exit(state_helper_exit);
 
 MODULE_AUTHOR("Pranav Vashi <neobuddy89@gmail.com>");
 MODULE_DESCRIPTION("State Helper Driver");
-MODULE_LICENSE("GPLv2");
+MODULE_LICENSE("GPL");

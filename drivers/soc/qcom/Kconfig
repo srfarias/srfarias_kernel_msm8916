@@ -586,10 +586,6 @@ config MSM_PERFORMANCE_HOTPLUG_ON
 config STATE_NOTIFIER
         bool "State Notifier"
 
-config STATE_HELPER
-        bool "State Helper"
-	depends on STATE_NOTIFIER
-
 source "drivers/soc/qcom/memshare/Kconfig"
 
 config BOOTINFO
@@ -602,7 +598,6 @@ config FORCE_FAST_CHARGE
 	help
 	  This allows users to override default charge rate for both USB and AC
 	  charger input current
-
 
 config MMI_SOC_INFO
 	default n
