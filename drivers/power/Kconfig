@@ -483,14 +483,6 @@ config BATTERY_BCL
 	  thermal daemon enables BCL.
 	  It will notify thermal daemon if IBat crosses Imax threshold.
 
-config BATTERY_BCL_HOTPLUG
-	bool "Battery Current Limit driver - Hotplug support"
-	depends on BATTERY_BCL
-	default y
-	help
-	  Say Y here to enable support for battery current limit driver to 
-	  hotplug cpu cores 
-
 config CHARGER_SMB347
 	tristate "Summit Microelectronics SMB347 Battery Charger"
 	depends on I2C

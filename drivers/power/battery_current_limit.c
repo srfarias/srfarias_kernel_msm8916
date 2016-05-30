@@ -197,9 +197,7 @@ static enum bcl_threshold_state bcl_vph_state = BCL_THRESHOLD_DISABLED,
 		bcl_ibat_state = BCL_THRESHOLD_DISABLED;
 static DEFINE_MUTEX(bcl_notify_mutex);
 static uint32_t bcl_hotplug_request, bcl_hotplug_mask;
-#ifdef CONFIG_BATTERY_BCL_HOTPLUG
 static uint32_t prev_hotplug_request;
-#endif
 static DEFINE_MUTEX(bcl_hotplug_mutex);
 static bool bcl_hotplug_enabled;
 static struct power_supply bcl_psy;
@@ -234,7 +232,6 @@ static void power_supply_callback(struct power_supply *psy)
 		bcl_config_vph_adc(gbcl, BCL_HIGH_THRESHOLD_TYPE);
 }
 
-#ifdef CONFIG_BATTERY_BCL_HOTPLUG
 static void __ref bcl_handle_hotplug(void)
 {
 	int ret = 0, _cpu = 0;
@@ -281,7 +278,6 @@ handle_hotplug_exit:
 	mutex_unlock(&bcl_hotplug_mutex);
 	return;
 }
-#endif
 static int __ref bcl_cpu_ctrl_callback(struct notifier_block *nfb,
 	unsigned long action, void *hcpu)
 {
@@ -373,9 +369,7 @@ static void battery_monitor_work(struct work_struct *work)
 	if (gbcl->bcl_mode == BCL_DEVICE_ENABLED) {
 		bcl->btm_mode = BCL_VPH_MONITOR_MODE;
 		update_cpu_freq();
-#ifdef CONFIG_BATTERY_BCL_HOTPLUG
 		bcl_handle_hotplug();
-#endif
 		bcl_get_battery_voltage(&vbatt);
 		pr_debug("vbat is %d\n", vbatt);
 		if (bcl_vph_state == BCL_LOW_THRESHOLD) {
