@@ -200,6 +200,7 @@ static uint32_t bcl_hotplug_request, bcl_hotplug_mask;
 static uint32_t prev_hotplug_request;
 static DEFINE_MUTEX(bcl_hotplug_mutex);
 static bool bcl_hotplug_enabled;
+static int bcl_hotplug_switch = 0;
 static struct power_supply bcl_psy;
 static const char bcl_psy_name[] = "bcl";
 static bool bcl_hit_shutdown_voltage;
@@ -369,7 +370,9 @@ static void battery_monitor_work(struct work_struct *work)
 	if (gbcl->bcl_mode == BCL_DEVICE_ENABLED) {
 		bcl->btm_mode = BCL_VPH_MONITOR_MODE;
 		update_cpu_freq();
+		if (bcl_hotplug_switch == 1) {
 		bcl_handle_hotplug();
+		}
 		bcl_get_battery_voltage(&vbatt);
 		pr_debug("vbat is %d\n", vbatt);
 		if (bcl_vph_state == BCL_LOW_THRESHOLD) {
@@ -579,6 +582,7 @@ show_bcl(vph_state, bcl_vph_state, "%d\n")
 show_bcl(ibat_state, bcl_ibat_state, "%d\n")
 show_bcl(hotplug_mask, bcl_hotplug_mask, "%d\n")
 show_bcl(hotplug_status, bcl_hotplug_request, "%d\n")
+show_bcl(hotplug_switch, bcl_hotplug_switch, "%d\n")
 
 static ssize_t
 mode_show(struct device *dev, struct device_attribute *attr, char *buf)
@@ -886,6 +890,19 @@ static ssize_t hotplug_mask_store(struct device *dev,
 	return count;
 }
 
+static ssize_t hotplug_switch_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	int val;
+	sscanf(buf, "%d", &val);
+
+	if ((val == 0) || (val == 1))
+		bcl_hotplug_switch = val;
+
+	return count;
+}
+
 /*
  * BCL device attributes
  */
@@ -926,6 +943,7 @@ static struct device_attribute btm_dev_attr[] = {
 	__ATTR(thermal_freq_limit, 0444, freq_limit_show, NULL),
 	__ATTR(hotplug_status, 0444, hotplug_status_show, NULL),
 	__ATTR(hotplug_mask, 0644, hotplug_mask_show, hotplug_mask_store),
+	__ATTR(hotplug_switch, 0644, hotplug_switch_show, hotplug_switch_store),
 };
 
 static int create_bcl_sysfs(struct bcl_context *bcl)
