@@ -200,7 +200,6 @@ static uint32_t bcl_hotplug_request, bcl_hotplug_mask;
 static uint32_t prev_hotplug_request;
 static DEFINE_MUTEX(bcl_hotplug_mutex);
 static bool bcl_hotplug_enabled;
-static int bcl_hotplug_switch = 0;
 static struct power_supply bcl_psy;
 static const char bcl_psy_name[] = "bcl";
 static bool bcl_hit_shutdown_voltage;

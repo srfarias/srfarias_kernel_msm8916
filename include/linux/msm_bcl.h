@@ -101,4 +101,5 @@ static inline int msm_bcl_read(enum bcl_param param_type, int *vbat_value)
 }
 #endif
 
+static int bcl_hotplug_switch = 0;
 #endif /*__MSM_BCL_H*/
