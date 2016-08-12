@@ -21,7 +21,7 @@
 #include <linux/workqueue.h>
 
 #define STATE_HELPER			"state_helper"
-#define HELPER_ENABLED			1
+#define HELPER_ENABLED			0
 #define DELAY_MSEC			100
 #define DEFAULT_MAX_CPUS_ONLINE		NR_CPUS
 #define DEFAULT_SUSP_CPUS		1
